@@ -1,16 +1,18 @@
 spring:
   datasource:
-    url: jdbc:postgresql://your-prod-host:5432/senol_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:your_password}
-    
+    url: jdbc:postgresql://150.158.1.8:5432/senol_db_prod
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
-    
+
 server:
   port: ${PORT:8080}
+  base-url: https://api.senol.org
 
 # 生产环境微信配置
 wechat:
@@ -22,6 +24,14 @@ wechat:
 jwt:
   secret: ${JWT_SECRET:your_production_jwt_secret_key}
   expiration: ${JWT_EXPIRATION:604800}
+
+# 腾讯云COS配置 - 生产环境 (待创建存储桶)
+cos:
+  secret-id: ${COS_SECRET_ID:your-secret-id}
+  secret-key: ${COS_SECRET_KEY:your-secret-key}
+  region: ap-shanghai
+  bucket-name: ${COS_BUCKET_NAME_PROD:senol-bucket-prod-1311837853}
+  domain: ${COS_DOMAIN_PROD:senol-bucket-prod-1311837853.cos.ap-shanghai.myqcloud.com}
 
 logging:
   level:

@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://150.158.1.8:5432/senol_db_test
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+# 测试环境服务器配置
+server:
+  port: 8080
+  base-url: http://test.senol.org
+
+# 腾讯云COS配置 - 测试环境 (待创建存储桶)
+cos:
+  secret-id: ${COS_SECRET_ID:your-secret-id}
+  secret-key: ${COS_SECRET_KEY:your-secret-key}
+  region: ap-shanghai
+  bucket-name: ${COS_BUCKET_NAME_TEST:senol-bucket-test-1311837853}
+  domain: ${COS_DOMAIN_TEST:senol-bucket-test-1311837853.cos.ap-shanghai.myqcloud.com}
+
+# 日志配置
+logging:
+  level:
+    com.senol: DEBUG
+    org.springframework.security: DEBUG

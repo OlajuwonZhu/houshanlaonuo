@@ -128,6 +128,9 @@ public class CloudStorageService {
             InputStream inputStream = file.getInputStream();
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, inputStream, metadata);
             
+            // 设置对象ACL为公共读（如果存储桶没有配置公共读权限）
+            // putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
+            
             // 执行上传
             PutObjectResult result = client.putObject(putObjectRequest);
             
@@ -188,13 +191,26 @@ public class CloudStorageService {
      * 从URL中提取COS对象key
      */
     private String extractKeyFromUrl(String fileUrl) {
-        if (fileUrl == null || !fileUrl.contains(domain)) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
             return null;
         }
         
         try {
-            String[] parts = fileUrl.split(domain + "/");
-            return parts.length > 1 ? parts[1] : null;
+            // 处理完整的HTTPS URL格式
+            String domainWithProtocol = "https://" + domain;
+            if (fileUrl.startsWith(domainWithProtocol)) {
+                String key = fileUrl.substring(domainWithProtocol.length());
+                // 移除开头的斜杠
+                return key.startsWith("/") ? key.substring(1) : key;
+            }
+            
+            // 兼容旧格式：直接包含domain的情况
+            if (fileUrl.contains(domain)) {
+                String[] parts = fileUrl.split(domain + "/");
+                return parts.length > 1 ? parts[1] : null;
+            }
+            
+            return null;
         } catch (Exception e) {
             log.error("提取key失败: {}", fileUrl, e);
             return null;
