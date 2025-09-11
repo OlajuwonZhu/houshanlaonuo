@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://your-prod-host:5432/senol_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:your_password}
+    
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    
+server:
+  port: ${PORT:8080}
+
+# 生产环境微信配置
+wechat:
+  miniapp:
+    app-id: ${WECHAT_APP_ID:your_app_id}
+    secret: ${WECHAT_APP_SECRET:your_app_secret}
+
+# 生产环境JWT配置
+jwt:
+  secret: ${JWT_SECRET:your_production_jwt_secret_key}
+  expiration: ${JWT_EXPIRATION:604800}
+
+logging:
+  level:
+    com.senol: INFO
+    org.springframework.security: WARN

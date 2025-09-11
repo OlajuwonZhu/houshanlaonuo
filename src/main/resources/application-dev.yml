@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/senol_db
+    username: postgres
+    password: postgres
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    
+logging:
+  level:
+    com.senol: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG

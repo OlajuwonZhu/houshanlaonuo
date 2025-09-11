@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: houshan-laonuo
+  
+  datasource:
+    url: jdbc:postgresql://192.168.31.124:5432/senol_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+server:
+  port: 8080
+
+# 微信小程序配置
+wechat:
+  miniapp:
+    app-id: wxf8c903a46e471c2f
+    secret: e4a6d6d7bcd710ab30ea4424c6992d69
+
+# JWT配置
+jwt:
+  secret: senol_jwt_secret_key_2024_houshan_laonuo
+  expiration: 604800 # 7天
+
+# 文件上传配置
+file:
+  upload:
+    path: G:/Windsurf培训/test01/uploads/
+    pdf-path: G:/Windsurf培训/test01/uploads/publications/
+    image-path: G:/Windsurf培训/test01/uploads/images/
+
+# 腾讯云COS配置
+cos:
+  secret-id: ${COS_SECRET_ID:your-secret-id}
+  secret-key: ${COS_SECRET_KEY:your-secret-key}
+  region: ${COS_REGION:ap-beijing}
+  bucket-name: ${COS_BUCKET_NAME:senol-bucket}
+  domain: ${COS_DOMAIN:senol-bucket.cos.ap-beijing.myqcloud.com}
+
+logging:
+  level:
+    com.senol: DEBUG
+    org.springframework.security: DEBUG
