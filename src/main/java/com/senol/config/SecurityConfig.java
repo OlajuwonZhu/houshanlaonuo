@@ -50,7 +50,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // 允许的域名 - 生产域名和开发环境
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "https://houshanlaonuo.cloud",
+            "http://150.158.1.8:*",
+            "https://150.158.1.8:*",
+            "http://localhost:*",
+            "http://192.168.*.*:*",
+            "http://127.0.0.1:*"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

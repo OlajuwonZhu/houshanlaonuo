@@ -19,6 +19,10 @@ public interface PublicationRepository extends JpaRepository<Publication, Long> 
     @Query("SELECT COUNT(p) FROM Publication p WHERE p.isActive = true")
     Long countActivePublications();
     
-    @Query("SELECT DISTINCT p.publishYear FROM Publication p WHERE p.publishYear IS NOT NULL ORDER BY p.publishYear DESC")
+    @Query("SELECT DISTINCT p.publishYear FROM Publication p WHERE p.isActive = true ORDER BY p.publishYear DESC")
     List<Integer> findDistinctPublishYears();
+    
+    List<Publication> findByPublishYearAndIsActiveTrueOrderByIssueNumberDesc(Integer year);
+    
+    Long countByIsActiveTrue();
 }

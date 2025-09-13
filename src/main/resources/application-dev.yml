@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://150.158.1.8:5432/senol_db_dev
     username: postgres
-    password: postgres
+    password: ${DB_PASSWORD:your-db-password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -12,7 +12,7 @@ spring:
 
 server:
   port: 8080
-  base-url: http://localhost:8080
+  base-url: http://150.158.1.8:8080
 
 # 腾讯云COS配置 - 开发环境
 cos:
@@ -24,6 +24,7 @@ cos:
 
 logging:
   level:
-    com.senol: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
+    com.senol: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN

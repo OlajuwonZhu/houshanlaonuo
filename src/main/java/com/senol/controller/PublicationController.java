@@ -6,16 +6,12 @@ import com.senol.service.PublicationService;
 import com.senol.service.UserService;
 import com.senol.util.ResponseUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,8 +26,6 @@ public class PublicationController {
     @Autowired
     private UserService userService;
     
-    @Value("${file.upload.pdf-path}")
-    private String pdfUploadPath;
     
     @GetMapping
     public ResponseUtil<Page<Publication>> getPublications(
@@ -126,24 +120,8 @@ public class PublicationController {
         Publication pub = publication.get();
         publicationService.incrementDownloadCount(id);
         
-        // 返回文件下载URL
-        String downloadUrl = "/api/publications/file/" + pub.getFilePath();
-        return ResponseUtil.success(Map.of("downloadUrl", downloadUrl));
-    }
-    
-    @GetMapping("/file/{fileName}")
-    public void downloadFile(@PathVariable String fileName, 
-                           jakarta.servlet.http.HttpServletResponse response) throws IOException {
-        
-        Path filePath = Paths.get(pdfUploadPath, fileName);
-        if (!Files.exists(filePath)) {
-            response.setStatus(404);
-            return;
-        }
-        
-        response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
-        Files.copy(filePath, response.getOutputStream());
+        // 直接返回COS文件URL
+        return ResponseUtil.success(Map.of("downloadUrl", pub.getFilePath()));
     }
     
     @GetMapping("/years")

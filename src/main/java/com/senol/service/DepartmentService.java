@@ -15,11 +15,15 @@ public class DepartmentService {
     private DepartmentRepository departmentRepository;
     
     public List<Department> getAllDepartments() {
-        return departmentRepository.findAllByOrderByDisplayOrder();
+        return departmentRepository.findAllByOrderByDisplayOrderWithCreatedBy();
     }
     
     public List<Department> getActiveDepartments() {
-        return departmentRepository.findByIsActiveTrueOrderByDisplayOrder();
+        return departmentRepository.findByIsActiveTrueOrderByDisplayOrderWithCreatedBy();
+    }
+    
+    public List<Department> getDepartmentsByYear(Integer year) {
+        return departmentRepository.findByIsActiveTrueAndYearOrderByDisplayOrderWithCreatedBy(year);
     }
     
     public Optional<Department> getDepartmentById(Long id) {

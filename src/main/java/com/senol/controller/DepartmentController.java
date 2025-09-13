@@ -1,7 +1,9 @@
 package com.senol.controller;
 
 import com.senol.entity.Department;
+import com.senol.entity.User;
 import com.senol.service.DepartmentService;
+import com.senol.service.UserService;
 import com.senol.util.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +21,41 @@ public class DepartmentController {
     @Autowired
     private DepartmentService departmentService;
     
+    @Autowired
+    private UserService userService;
+    
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Department>>> getAllDepartments() {
+    public ResponseEntity<ApiResponse<List<Department>>> getAllDepartments(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String year) {
         try {
-            List<Department> departments = departmentService.getActiveDepartments();
+            System.out.println("Department API called with parameters - page: " + page + ", pageSize: " + pageSize + ", year: " + year);
+            
+            Integer yearParam = null;
+            if (year != null && !year.equals("null") && !year.trim().isEmpty()) {
+                try {
+                    yearParam = Integer.parseInt(year);
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("年份参数格式错误"));
+                }
+            }
+            
+            List<Department> departments;
+            if (yearParam != null && yearParam > 0) {
+                System.out.println("Filtering departments by year: " + yearParam);
+                departments = departmentService.getDepartmentsByYear(yearParam);
+            } else {
+                System.out.println("Getting all active departments");
+                departments = departmentService.getActiveDepartments();
+            }
+            
+            System.out.println("Found " + departments.size() + " departments");
             return ResponseEntity.ok(ApiResponse.success(departments));
         } catch (Exception e) {
+            System.err.println("Error in getAllDepartments: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                 .body(ApiResponse.error("获取部门列表失败: " + e.getMessage()));
         }
@@ -77,7 +108,8 @@ public class DepartmentController {
             Authentication authentication) {
         try {
             // TODO: 从authentication中获取用户ID并设置createdBy
-            department.setCreatedBy(1L); // 临时使用系统用户
+            User user = userService.findById(1L).orElse(null);
+            department.setCreatedBy(user);
             Department created = departmentService.createDepartment(department);
             return ResponseEntity.ok(ApiResponse.success(created));
         } catch (Exception e) {

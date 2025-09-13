@@ -23,8 +23,11 @@ public class Department {
     @Column(name = "department_name", nullable = false, length = 100)
     private String departmentName; // 部门名称
     
-    @Column(name = "department_code", unique = true, length = 50)
+    @Column(name = "department_code", unique = true, length = 50, nullable = true)
     private String departmentCode; // 部门代码 (office, wildlife, environment, training, media, external)
+    
+    @Column(name = "year")
+    private Integer year; // 年份
     
     @Column(name = "description", columnDefinition = "TEXT")
     private String description; // 部门描述
@@ -59,8 +62,9 @@ public class Department {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    @Column(name = "created_by")
-    private Long createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
     
     @Column(name = "updated_by")
     private Long updatedBy;
