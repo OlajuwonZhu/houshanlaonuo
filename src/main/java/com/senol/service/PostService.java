@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class PostService {
@@ -165,5 +168,35 @@ public class PostService {
     // 获取用户发布数量
     public Long getPostCountByUser(Long userId) {
         return postRepository.countByUserIdAndIsActiveTrue(userId);
+    }
+
+    // 获取某个帖子的所有点赞用户
+    public List<User> getLikers(Long postId) {
+        List<PostLike> likes = postLikeRepository.findWithUserByPostId(postId);
+        List<User> users = new ArrayList<>();
+        for (PostLike like : likes) {
+            if (like.getUser() != null) {
+                users.add(like.getUser());
+            }
+        }
+        return users;
+    }
+
+    // 批量获取多个帖子的点赞用户列表
+    public Map<Long, List<User>> getLikersForPosts(List<Long> postIds) {
+        Map<Long, List<User>> result = new HashMap<>();
+        if (postIds == null || postIds.isEmpty()) {
+            return result;
+        }
+        List<PostLike> likes = postLikeRepository.findWithUserByPostIdIn(postIds);
+        for (PostLike like : likes) {
+            Long pid = like.getPost().getId();
+            result.computeIfAbsent(pid, k -> new ArrayList<>()).add(like.getUser());
+        }
+        // 确保没有点赞的帖子也返回空列表
+        for (Long id : postIds) {
+            result.computeIfAbsent(id, k -> new ArrayList<>());
+        }
+        return result;
     }
 }

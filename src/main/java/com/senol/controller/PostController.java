@@ -12,6 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -135,31 +141,83 @@ public class PostController {
         }
     }
 
-    // 点赞/取消点赞
+    // 点赞/取消点赞（使用当前登录用户）
     @PostMapping("/{id}/like")
-    public ResponseUtil<Boolean> toggleLike(@PathVariable Long id) {
+    public ResponseUtil<Boolean> toggleLike(@PathVariable Long id, Authentication authentication) {
         try {
-            // 使用默认系统用户ID=1
-            Long userId = 1L;
-            
-            boolean isLiked = postService.toggleLike(id, userId);
+            if (authentication == null) {
+                return ResponseUtil.error("未登录");
+            }
+            String openId = authentication.getName();
+            User user = userService.findByOpenId(openId);
+            if (user == null) {
+                return ResponseUtil.error("用户不存在");
+            }
+            boolean isLiked = postService.toggleLike(id, user.getId());
             return ResponseUtil.success(isLiked);
         } catch (Exception e) {
             return ResponseUtil.error("操作失败: " + e.getMessage());
         }
     }
 
-    // 检查是否已点赞
+    // 检查是否已点赞（使用当前登录用户）
     @GetMapping("/{id}/liked")
-    public ResponseUtil<Boolean> isLiked(@PathVariable Long id) {
+    public ResponseUtil<Boolean> isLiked(@PathVariable Long id, Authentication authentication) {
         try {
-            // 使用默认系统用户ID=1
-            Long userId = 1L;
-            
-            boolean isLiked = postService.isLikedByUser(id, userId);
+            if (authentication == null) {
+                return ResponseUtil.error("未登录");
+            }
+            String openId = authentication.getName();
+            User user = userService.findByOpenId(openId);
+            if (user == null) {
+                return ResponseUtil.error("用户不存在");
+            }
+            boolean isLiked = postService.isLikedByUser(id, user.getId());
             return ResponseUtil.success(isLiked);
         } catch (Exception e) {
             return ResponseUtil.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    // 获取某个帖子的点赞用户（返回用户ID与山号）
+    @GetMapping("/{id}/likers")
+    public ResponseUtil<List<Map<String, Object>>> getLikers(@PathVariable Long id) {
+        try {
+            List<User> users = postService.getLikers(id);
+            List<Map<String, Object>> result = users.stream().map(u -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("userId", u.getId());
+                m.put("mountainName", u.getMountainName());
+                return m;
+            }).collect(Collectors.toList());
+            return ResponseUtil.success(result);
+        } catch (Exception e) {
+            return ResponseUtil.error("获取点赞用户失败: " + e.getMessage());
+        }
+    }
+
+    // 批量获取多个帖子的点赞用户
+    @GetMapping("/likers")
+    public ResponseUtil<Map<Long, List<Map<String, Object>>>> getLikersBatch(@RequestParam("ids") String idsParam) {
+        try {
+            List<Long> ids = Arrays.stream(idsParam.split(","))
+                    .filter(s -> !s.trim().isEmpty())
+                    .map(Long::valueOf)
+                    .collect(Collectors.toList());
+            Map<Long, List<User>> map = postService.getLikersForPosts(ids);
+            Map<Long, List<Map<String, Object>>> result = new HashMap<>();
+            for (Map.Entry<Long, List<User>> entry : map.entrySet()) {
+                List<Map<String, Object>> arr = entry.getValue().stream().map(u -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("userId", u.getId());
+                    m.put("mountainName", u.getMountainName());
+                    return m;
+                }).collect(Collectors.toList());
+                result.put(entry.getKey(), arr);
+            }
+            return ResponseUtil.success(result);
+        } catch (Exception e) {
+            return ResponseUtil.error("获取点赞用户失败: " + e.getMessage());
         }
     }
 
