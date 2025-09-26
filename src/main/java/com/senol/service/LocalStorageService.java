@@ -101,8 +101,18 @@ public class LocalStorageService {
     public String uploadUserAvatar(MultipartFile file, Long userId) throws IOException {
         String fileName = generateFileName("avatar", file.getOriginalFilename());
         String relativePath = String.format("avatars/users/%d/%s", userId, fileName);
-        
         String fullPath = saveFile(file, relativePath);
+        
+        return String.format("/api/files/%s", relativePath);
+    }
+
+    /**
+     * 从字节数组上传用户头像
+     */
+    public String uploadUserAvatarFromBytes(byte[] data, String originalFileName, Long userId) throws IOException {
+        String fileName = generateFileName("avatar", originalFileName);
+        String relativePath = String.format("avatars/users/%d/%s", userId, fileName);
+        String fullPath = saveBytes(data, relativePath);
         return String.format("/api/files/%s", relativePath);
     }
 
@@ -176,6 +186,34 @@ public class LocalStorageService {
             throw e;
         }
         
+        return fullPath.toString();
+    }
+
+    /**
+     * 以字节数组形式保存文件
+     */
+    private String saveBytes(byte[] data, String relativePath) throws IOException {
+        Path fullPath = Paths.get(uploadBasePath, relativePath);
+        log.info("准备保存二进制文件 -> {} ({} bytes)", fullPath, data != null ? data.length : 0);
+        Path parentDir = fullPath.getParent();
+        if (!Files.exists(parentDir)) {
+            Files.createDirectories(parentDir);
+        }
+        if (Files.exists(fullPath)) {
+            Files.delete(fullPath);
+        }
+        try {
+            Files.write(fullPath, data);
+            if (Files.exists(fullPath)) {
+                long size = Files.size(fullPath);
+                log.info("二进制文件保存成功: {} bytes -> {}", size, fullPath);
+            } else {
+                throw new IOException("文件保存失败，文件不存在");
+            }
+        } catch (IOException e) {
+            log.error("二进制文件保存失败: {}", e.getMessage(), e);
+            throw e;
+        }
         return fullPath.toString();
     }
 

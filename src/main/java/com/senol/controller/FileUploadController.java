@@ -16,6 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/upload")
@@ -111,6 +116,108 @@ public class FileUploadController {
             return ResponseUtil.success(fileUrl);
         } catch (Exception e) {
             return ResponseUtil.error("头像上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 服务器端抓取远端头像并上传到存储（用于微信头像URL）
+     */
+    @PostMapping("/fetch-avatar")
+    public ResponseUtil<String> fetchAndUploadAvatar(@RequestBody Map<String, String> body,
+                                                    Authentication authentication) {
+        try {
+            if (authentication == null) {
+                return ResponseUtil.error("未登录");
+            }
+            String url = body != null ? body.get("url") : null;
+            if (url == null || !(url.startsWith("http://") || url.startsWith("https://"))) {
+                return ResponseUtil.error("无效的URL");
+            }
+
+            String openId = authentication.getName();
+            User user = userService.findByOpenId(openId);
+            if (user == null) {
+                return ResponseUtil.error("用户不存在");
+            }
+            Long userId = user.getId();
+
+            DownloadedFile df = downloadRemote(url);
+            if (df == null || df.data == null || df.data.length == 0) {
+                return ResponseUtil.error("下载头像失败");
+            }
+
+            String fileUrl;
+            if (!"your-secret-id".equals(cosSecretId)) {
+                fileUrl = cloudStorageService.uploadUserAvatarFromBytes(
+                        df.data,
+                        df.fileName,
+                        df.contentType,
+                        userId
+                );
+            } else {
+                fileUrl = localStorageService.uploadUserAvatarFromBytes(
+                        df.data,
+                        df.fileName,
+                        userId
+                );
+            }
+
+            return ResponseUtil.success(fileUrl);
+        } catch (Exception e) {
+            return ResponseUtil.error("抓取头像失败: " + e.getMessage());
+        }
+    }
+
+    private static class DownloadedFile {
+        byte[] data;
+        String contentType;
+        String fileName;
+    }
+
+    private DownloadedFile downloadRemote(String urlStr) throws IOException {
+        HttpURLConnection conn = null;
+        InputStream in = null;
+        ByteArrayOutputStream out = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(15000);
+            conn.setRequestMethod("GET");
+            conn.connect();
+            int code = conn.getResponseCode();
+            if (code != 200) {
+                throw new IOException("HTTP " + code);
+            }
+            String contentType = conn.getContentType();
+            in = conn.getInputStream();
+            out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+            }
+            DownloadedFile df = new DownloadedFile();
+            df.data = out.toByteArray();
+            df.contentType = contentType != null ? contentType : "image/jpeg";
+            // 推断文件名
+            String path = url.getPath();
+            String ext = null;
+            if (path != null && path.contains(".")) {
+                ext = path.substring(path.lastIndexOf('.'));
+                if (ext.length() > 6) ext = null; // 安全兜底
+            }
+            if (ext == null) {
+                if (df.contentType.contains("png")) ext = ".png";
+                else if (df.contentType.contains("webp")) ext = ".webp";
+                else ext = ".jpg";
+            }
+            df.fileName = UUID.randomUUID().toString() + ext;
+            return df;
+        } finally {
+            if (in != null) try { in.close(); } catch (IOException ignore) {}
+            if (out != null) try { out.close(); } catch (IOException ignore) {}
+            if (conn != null) conn.disconnect();
         }
     }
     
