@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -153,6 +154,36 @@ public class CloudStorageService {
     }
 
     /**
+     * 使用字节数组上传文件
+     */
+    private String uploadFile(byte[] data, String key, String contentType) throws IOException {
+        try {
+            COSClient client = getCOSClient();
+
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(data.length);
+            metadata.setContentType(contentType != null ? contentType : "application/octet-stream");
+
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, inputStream, metadata);
+
+            PutObjectResult result = client.putObject(putObjectRequest);
+
+            inputStream.close();
+
+            String fileUrl = String.format("https://%s/%s", domain, key);
+            log.info("文件上传成功(bytes): {} bytes -> {}", data.length, fileUrl);
+            return fileUrl;
+        } catch (CosServiceException e) {
+            log.error("COS服务异常: {}", e.getMessage(), e);
+            throw new IOException("文件上传失败: " + e.getErrorMessage());
+        } catch (CosClientException e) {
+            log.error("COS客户端异常: {}", e.getMessage(), e);
+            throw new IOException("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 删除文件
      */
     public boolean deleteFile(String fileUrl) {
@@ -227,6 +258,15 @@ public class CloudStorageService {
         String fileName = generateFileName(file.getOriginalFilename());
         String key = String.format("avatars/users/%d/%s", userId, fileName);
         return uploadFile(file, key);
+    }
+
+    /**
+     * 从字节数组上传用户头像
+     */
+    public String uploadUserAvatarFromBytes(byte[] data, String originalFileName, String contentType, Long userId) throws IOException {
+        String fileName = generateFileName(originalFileName);
+        String key = String.format("avatars/users/%d/%s", userId, fileName);
+        return uploadFile(data, key, contentType);
     }
 
     /**
