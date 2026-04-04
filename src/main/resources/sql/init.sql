@@ -1,7 +1,5 @@
 -- 创建数据库（如果不存在）
 CREATE DATABASE IF NOT EXISTS senol_db;
-
--- 使用数据库
 \c senol_db;
 
 -- 创建用户表
@@ -19,12 +17,13 @@ CREATE TABLE IF NOT EXISTS users (
     phone_number VARCHAR(20),
     email VARCHAR(100),
     is_active BOOLEAN NOT NULL DEFAULT true,
+    is_admin BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 插入系统默认用户
-INSERT INTO users (id, open_id, name, mountain_name, bio, is_active) 
+-- 系统默认用户
+INSERT INTO users (id, open_id, name, mountain_name, bio, is_active)
 VALUES (1, 'system', '系统用户', 'System', '系统默认用户，用于处理未登录用户的操作', true)
 ON CONFLICT (id) DO NOTHING;
 
@@ -323,3 +322,101 @@ INSERT INTO association_info (info_type, title, content, display_order, is_activ
 开创未来，谱写绿色之歌', 3, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('FOUNDATION', '山诺基金会', '"山诺会"是北京林业大学科学探险与野外生存协会的音译简称，成立于1994年4月27日，是丰富绿色专业学习、衔接课堂知识与科学考察活动、培训野外工作技能、锻造大学生热爱自然之情和致力环境保护之心的大学生社团。成立30年来，这个社团成为北京林业大学最具代表性的环保公益社团之一，以严谨细致的活动组织、锐意创新的活动形式、科学可持续的组织体系而赢得社会赞誉。近两万名大学生在这个社团经受锻炼、迅速成长，毕业后成为我国生态文明建设和环境保护事业的中坚。', 4, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT DO NOTHING;
+
+-- =============================
+-- Groups, Events, Signups, Feature Flags
+-- =============================
+
+-- 特性开关
+CREATE TABLE IF NOT EXISTS feature_flags (
+    id BIGSERIAL PRIMARY KEY,
+    flag_key VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 小组表
+CREATE TABLE IF NOT EXISTS groups (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    city VARCHAR(50),
+    description TEXT,
+    cover_image_url TEXT,
+    join_policy VARCHAR(20) NOT NULL DEFAULT 'APPROVAL_REQUIRED' CHECK (join_policy IN ('OPEN','APPROVAL_REQUIRED','CLOSED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','INACTIVE')),
+    member_count INTEGER NOT NULL DEFAULT 0,
+    max_members INTEGER,
+    tags TEXT,
+    primary_leader_user_id BIGINT REFERENCES users(id),
+    created_by BIGINT REFERENCES users(id),
+    updated_by BIGINT REFERENCES users(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 小组成员表
+CREATE TABLE IF NOT EXISTS group_members (
+    id BIGSERIAL PRIMARY KEY,
+    group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    role VARCHAR(20) NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('LEADER','MODERATOR','MEMBER')),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','REMOVED')),
+    applied_at TIMESTAMP,
+    joined_at TIMESTAMP,
+    rejected_at TIMESTAMP,
+    remark TEXT,
+    UNIQUE (group_id, user_id)
+);
+
+-- 小组活动表
+CREATE TABLE IF NOT EXISTS group_events (
+    id BIGSERIAL PRIMARY KEY,
+    group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    location TEXT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    signup_start_time TIMESTAMP,
+    signup_end_time TIMESTAMP,
+    capacity INTEGER,
+    waitlist_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    require_approval BOOLEAN NOT NULL DEFAULT TRUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','PUBLISHED','CANCELED','ENDED')),
+    organizer_user_id BIGINT REFERENCES users(id),
+    cover_image_url TEXT,
+    external_link TEXT,
+    form_schema TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 活动报名表
+CREATE TABLE IF NOT EXISTS event_signups (
+    id BIGSERIAL PRIMARY KEY,
+    event_id BIGINT NOT NULL REFERENCES group_events(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','WAITLISTED','CANCELED','REJECTED','CHECKED_IN')),
+    signup_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cancel_at TIMESTAMP,
+    check_in_at TIMESTAMP,
+    answers TEXT,
+    note TEXT,
+    source VARCHAR(50),
+    UNIQUE (event_id, user_id)
+);
+
+-- 常用索引（Groups 模块）
+CREATE INDEX IF NOT EXISTS idx_group_members_group_status ON group_members(group_id, status);
+CREATE INDEX IF NOT EXISTS idx_group_events_group_status ON group_events(group_id, status);
+CREATE INDEX IF NOT EXISTS idx_event_signups_event_status ON event_signups(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_event_signups_event_signupat ON event_signups(event_id, signup_at);
+
+-- 初始化特性开关
+INSERT INTO feature_flags (flag_key, enabled, description, updated_at) VALUES
+('groups.enabled', true, '小组功能总开关', CURRENT_TIMESTAMP),
+('events.enabled', true, '活动功能总开关', CURRENT_TIMESTAMP),
+('signups.enabled', true, '报名功能总开关', CURRENT_TIMESTAMP)
+ON CONFLICT (flag_key) DO NOTHING;
